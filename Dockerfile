@@ -2,27 +2,30 @@ FROM php:8.2-apache
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    zip unzip git curl libonig-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip exif pcntl
+    git unzip libzip-dev zip libpng-dev libonig-dev libxml2-dev curl \
+    && docker-php-ext-install pdo pdo_mysql zip
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
-COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy project files
+# Copy Laravel project files
 COPY . .
+
+# Copy Apache config
+COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Install Laravel dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-# Give permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Expose port
+# Expose port 80
 EXPOSE 80
+
+# Start Apache in foreground (penting!)
+CMD ["apache2-foreground"]
